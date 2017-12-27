@@ -1,4 +1,5 @@
 from math import log
+import operator
 
 def calcShannonEnt(dataSet):
     numEntries = len(dataSet)
@@ -51,3 +52,53 @@ def chooseBestFeatureToSplit(dataSet):
            bestInfoGain = infoGain
            bestFeature = i
     return bestFeature
+
+def majorityCnt(classList):
+    '''Get the class that occurs with the greatest frequency'''
+    classCount={}
+    for vote in classList:
+        if vote not in classList: classCount[vote] = 0
+        classCount[vote] += 1
+    storedClassCount = sorted(classCount.iteritems(), key=operator.itemgetter(1), reverse=True)
+    return sortedClassCount[0][0]
+
+def createTree(dataSet, labels):
+    classList = [example[-1] for example in dataSet]
+    if classList.count(classList[0]) == len(classList):
+       return classList[0] #stop when all classes are equal
+    if len(dataSet[0]) ==1:
+       return majorityCnt(classList) #When no more features, return majority
+    bestFeat = chooseBestFeatureToSplit(dataSet)
+    bestFeatLabel = labels[bestFeat]
+    myTree = {bestFeatLabel:{}}
+    del(labels[bestFeat])
+    featValues = [example[bestFeat] for example in dataSet]
+    uniqueVals = set(featValues) #Get list of unique values
+    for value in uniqueVals:
+        subLabels = labels[:]
+        myTree[bestFeatLabel][value] = createTree(splitDataSet(dataSet, bestFeat, value), subLabels)
+    return myTree
+
+#classification function for an existing decision tree
+def classify(inputTree, featLabels, testVec):
+    firstStr = inputTree.keys()[0]
+    secondDict = inputTree[firstStr]
+    featIndex = featLabels.index(firstStr) #translate label string to index
+    for key in secondDict.keys():
+        if testVec[featIndex] == key:
+           if type(secondDict[key]).__name__=='dict':
+              classLabel = classify(secondDict[key], featLabels, testVec)
+           else: classLabel = secondDict[key]
+    return classLabel
+
+#methods for persisting the decision tree with pickle
+def storeTree(inputTree, filename):
+    import pickle
+    fw = open(filename, 'w')
+    pickle.dump(inputTree, fw)
+    fw.close()
+
+def grabTree(filename):
+    import pickle
+    fr = open(filename)
+    return pickle.load(fr)
